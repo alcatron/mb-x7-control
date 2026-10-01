@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible MB X7 Control problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach Creative binaries, private frameworks, serial numbers, passwords, or other personal data.
+  - type: input
+    id: version
+    attributes:
+      label: MB X7 Control version
+      placeholder: 1.0.0 (1)
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac model
+    validations:
+      required: true
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Was the X7 connected directly by USB?
+      options: ["Yes", "No", "Not sure"]
+    validations:
+      required: true
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Audio configuration
+      description: Describe the selected output, attached speakers/headphones, and relevant X7 inputs.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
