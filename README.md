@@ -13,6 +13,39 @@ inspection, modification, contribution, and free redistribution are permitted
 under the project licence. Selling the software or offering paid redistribution
 is not permitted.
 
+![MB X7 Control showing the SBX Pro Studio controls](docs/images/mb-x7-control-sbx.png)
+
+## Screenshots
+
+<details>
+<summary>View every main section</summary>
+
+### Speakers
+
+![Speaker model, layout, routing and calibration controls](docs/images/mb-x7-control-speakers.png)
+
+### Headphones
+
+![Headphone output detection and gain controls](docs/images/mb-x7-control-headphones.png)
+
+### Cinematic
+
+![Dolby Digital dynamic range controls](docs/images/mb-x7-control-cinematic.png)
+
+### Mixer
+
+![Speakers master and five-source playback mixer controls](docs/images/mb-x7-control-mixer.png)
+
+### Equalizer
+
+![Ten-band equalizer and preset controls](docs/images/mb-x7-control-equalizer.png)
+
+### Advanced Features
+
+![Scout Mode and Auto Standby controls](docs/images/mb-x7-control-advanced.png)
+
+</details>
+
 ## v1.0 feature set
 
 - USB connection detection (Creative VID `041e`, X7 PID `323a`)
