@@ -95,6 +95,30 @@ struct SpeakersView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .padding(.top, 10)
+
+                            Divider()
+                                .padding(.vertical, 10)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Front Center Channel Position")
+                                    .font(.subheadline.weight(.semibold))
+                                Picker("Front Center Channel Position", selection: $c.frontCenterPosition) {
+                                    ForEach(FrontCenterPosition.allCases) { position in
+                                        Text(position.rawValue).tag(position)
+                                    }
+                                }
+                                .labelsHidden()
+                                .pickerStyle(.radioGroup)
+                                .onChange(of: c.frontCenterPosition) { _, _ in c.setFrontCenterPosition() }
+                                .disabled(!c.layout.hasCenter)
+
+                                if !c.layout.hasCenter {
+                                    Text("Available with 3.x and 5.x speaker configurations.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -189,23 +213,23 @@ private struct CalibrationRow: View {
 
             HStack(spacing: 6) {
                 calibrationButton("minus") { adjustDistance(by: -10) }
-                    .disabled((c.calibrationDistanceCM[channel] ?? 50) <= 50)
-                Text("\(((c.calibrationDistanceCM[channel] ?? 50) / 100).formatted(.number.precision(.fractionLength(1)))) m")
+                    .disabled((c.calibrationDistanceCM[channel] ?? 210) <= 50)
+                Text("\(((c.calibrationDistanceCM[channel] ?? 210) / 100).formatted(.number.precision(.fractionLength(1)))) m")
                     .monospacedDigit()
                     .frame(width: 58)
                 calibrationButton("plus") { adjustDistance(by: 10) }
-                    .disabled((c.calibrationDistanceCM[channel] ?? 50) >= 500)
+                    .disabled((c.calibrationDistanceCM[channel] ?? 210) >= 500)
             }
             .frame(width: 150)
 
             HStack(spacing: 6) {
                 calibrationButton("minus") { adjustLevel(by: -1) }
-                    .disabled((c.calibrationLevel[channel] ?? 0) <= -1)
+                    .disabled((c.calibrationLevel[channel] ?? 0) <= -20)
                 Text("\(Int((c.calibrationLevel[channel] ?? 0).rounded())) dB")
                     .monospacedDigit()
                     .frame(width: 42)
                 calibrationButton("plus") { adjustLevel(by: 1) }
-                    .disabled((c.calibrationLevel[channel] ?? 0) >= 1)
+                    .disabled((c.calibrationLevel[channel] ?? 0) >= 20)
             }
             .frame(width: 130)
         }
@@ -223,14 +247,14 @@ private struct CalibrationRow: View {
     }
 
     private func adjustDistance(by amount: Double) {
-        let current = c.calibrationDistanceCM[channel] ?? 50
+        let current = c.calibrationDistanceCM[channel] ?? 210
         c.calibrationDistanceCM[channel] = min(500, max(50, current + amount))
         c.setCalibrationDistances()
     }
 
     private func adjustLevel(by amount: Double) {
         let current = c.calibrationLevel[channel] ?? 0
-        c.calibrationLevel[channel] = min(1, max(-1, current + amount))
+        c.calibrationLevel[channel] = min(20, max(-20, current + amount))
         c.setCalibrationLevel(channel)
     }
 }

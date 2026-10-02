@@ -18,6 +18,12 @@ enum SpeakerOutputTarget: UInt32, CaseIterable, Identifiable {
     var label: String { switch self { case .line: "Line Out"; case .amplifier: "Amplifier Out"; case .both: "Line + Amplifier Out" } }
     var id: UInt32 { rawValue }
 }
+enum FrontCenterPosition: String, CaseIterable, Identifiable {
+    case above = "Above Screen"
+    case below = "Below Screen"
+    var id: String { rawValue }
+    var deviceValue: Float { self == .above ? 1 : 0 }
+}
 enum SpeakerLayout: Double, CaseIterable, Identifiable {
     case stereo=1, twoOne=2, threeZero=3, threeOne=4, fourZero=5, fourOne=6, fiveZero=7, fiveOne=8
     var id: Double { rawValue }

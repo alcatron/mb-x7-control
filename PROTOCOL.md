@@ -110,6 +110,11 @@ Changing/removing Subwoofer was observed to clear dependent settings in some tra
 
 # 4. Speaker calibration channel map — namespace 20 96
 
+Front-center vertical placement uses `08 40`: `1.0` = Above Screen and
+`0.0` = Below Screen. The mapping was recovered from the original panel's
+`radioButtonSelected:` path (`0x96`, command `0x20` in its Bluetooth protocol;
+USB SoundCore parameter IDs are twice those command IDs).
+
 | Channel | Level | Polarity/calibration-associated | Distance |
 |---|---:|---:|---:|
 | Front Left | `08 42` | `08 52` | `08 62` |
@@ -119,11 +124,15 @@ Changing/removing Subwoofer was observed to clear dependent settings in some tra
 | Rear Left | `08 4A` | `08 5A` | `08 6A` |
 | Rear Right | `08 4C` | `08 5C` | `08 6C` |
 
-- Level values: signed float32 BE; captures included `+1.0`, `0.0`, `-1.0` on tested controls.
+- Level values: signed float32 BE, −20.0 through +20.0 in 1 dB steps. The
+  original panel binary checks the controls against exact endpoints `-0x14`
+  and `0x14`; captures included `+1.0`, `0.0`, and `-1.0` examples.
 - `08 52..5C` are per-channel polarity values: `0.0` normal, `1.0` inverted.
 - Distance UI range is 50–500 cm in 10 cm steps. The device value is relative
   delay in seconds: `(longestDistanceCM - channelDistanceCM) * 2.91188631995807e-5`.
-  Creative's panel writes all six delay values after a distance change.
+  Creative's panel writes all six delay values after a distance change and
+  separately tracks the longest displayed distance. Its visible default is
+  210 cm; equal 210 cm channel distances therefore send zero relative delay.
 
 # 5. Speaker model and speaker preset HID family
 

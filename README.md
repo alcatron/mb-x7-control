@@ -56,7 +56,7 @@ is not permitted.
 - Speaker model selection for Other Speakers and E-MU XM7
 - E-MU XM7 Energetic / Neutral / Warm voicing
 - 2.0 through 5.1 speaker layouts and Line / Amplifier / Both output targets
-- Front and rear full-range flags, six-channel distance, level, and polarity calibration
+- Front and rear full-range flags, six-channel 0.5–5.0 m distance and −20–+20 dB level calibration, polarity, and front-center Above/Below Screen positioning
 - Bass Redirection, 10–500 Hz crossover and Subwoofer Gain
 - High Power Amplification and headphone surround over line/optical output
 - Headphone Direct Mode and SPDIF-In Direct Mode

@@ -43,7 +43,8 @@ final class X7Controller: ObservableObject {
     @Published var speakerVoicing: SpeakerVoicing = .neutral
     @Published var calibrationLevel:[CalibrationChannel:Double] = Dictionary(uniqueKeysWithValues: CalibrationChannel.allCases.map{($0,0)})
     @Published var invertedPolarity: [CalibrationChannel:Bool] = Dictionary(uniqueKeysWithValues: CalibrationChannel.allCases.map{($0,false)})
-    @Published var calibrationDistanceCM:[CalibrationChannel:Double] = Dictionary(uniqueKeysWithValues: CalibrationChannel.allCases.map{($0,50)})
+    @Published var calibrationDistanceCM:[CalibrationChannel:Double] = Dictionary(uniqueKeysWithValues: CalibrationChannel.allCases.map{($0,210)})
+    @Published var frontCenterPosition: FrontCenterPosition = .above
     @Published var frontFullRange = false
     @Published var rearFullRange = false
     @Published var highPowerAmplification = false
@@ -210,14 +211,15 @@ final class X7Controller: ObservableObject {
     }
     func setCalibrationLevel(_ c:CalibrationChannel){ write(X7Packets.dsp(c.levelParam,value:Float(calibrationLevel[c] ?? 0)), section:.speakers) }
     func setPolarity(_ channel: CalibrationChannel){ write(X7Packets.dsp(channel.polarityParam,value:(invertedPolarity[channel] ?? false) ? 1:0), section:.speakers) }
+    func setFrontCenterPosition(){ write(X7Packets.dsp(0x40,value:frontCenterPosition.deviceValue), section:.speakers) }
     func setCalibrationDistances(){
         // Creative stores distance as the acoustic delay from each speaker to the
         // farthest speaker. Its original panel uses 1 / 34342 seconds per cm.
         let channels = layout.calibrationChannels
-        let longest = channels.map { calibrationDistanceCM[$0] ?? 50 }.max() ?? 50
+        let longest = channels.map { calibrationDistanceCM[$0] ?? 210 }.max() ?? 210
         let secondsPerCentimeter: Double = 2.91188631995807e-5
         for channel in channels {
-            let delay = Float((longest - (calibrationDistanceCM[channel] ?? 50)) * secondsPerCentimeter)
+            let delay = Float((longest - (calibrationDistanceCM[channel] ?? 210)) * secondsPerCentimeter)
             guard send(X7Packets.dsp(channel.distanceParam,value:delay)) else { return }
         }
         persist(.speakers)
@@ -302,6 +304,7 @@ final class X7Controller: ObservableObject {
             defaults.set(rearFullRange, forKey:key("speakers.rearFullRange"))
             defaults.set(highPowerAmplification, forKey:key("speakers.highPower"))
             defaults.set(headphoneSurroundOverSpeakerOutput, forKey:key("speakers.headphoneSurround"))
+            defaults.set(frontCenterPosition.rawValue, forKey:key("speakers.frontCenterPosition"))
             defaults.set(Dictionary(uniqueKeysWithValues:calibrationLevel.map { ($0.key.rawValue, $0.value) }), forKey:key("speakers.levels"))
             defaults.set(Dictionary(uniqueKeysWithValues:invertedPolarity.map { ($0.key.rawValue, $0.value) }), forKey:key("speakers.polarity"))
             defaults.set(Dictionary(uniqueKeysWithValues:calibrationDistanceCM.map { ($0.key.rawValue, $0.value) }), forKey:key("speakers.distances"))
@@ -360,6 +363,7 @@ final class X7Controller: ObservableObject {
             if let value = SpeakerVoicing(rawValue:UInt8(defaults.integer(forKey:key("speakers.voicing")))) { speakerVoicing = value }
             frontFullRange = defaults.bool(forKey:key("speakers.frontFullRange")); rearFullRange = defaults.bool(forKey:key("speakers.rearFullRange"))
             highPowerAmplification = defaults.bool(forKey:key("speakers.highPower")); headphoneSurroundOverSpeakerOutput = defaults.bool(forKey:key("speakers.headphoneSurround"))
+            if let raw = defaults.string(forKey:key("speakers.frontCenterPosition")), let value = FrontCenterPosition(rawValue:raw) { frontCenterPosition = value }
             if let values = defaults.dictionary(forKey:key("speakers.levels")) as? [String:Double] {
                 for channel in CalibrationChannel.allCases { if let value = values[channel.rawValue] { calibrationLevel[channel] = value } }
             }
@@ -368,6 +372,25 @@ final class X7Controller: ObservableObject {
             }
             if let values = defaults.dictionary(forKey:key("speakers.distances")) as? [String:Double] {
                 for channel in CalibrationChannel.allCases { if let value = values[channel.rawValue] { calibrationDistanceCM[channel] = value } }
+            }
+            let distanceMigrationKey = key("speakers.distance210MigrationV2")
+            if !defaults.bool(forKey: distanceMigrationKey) {
+                // Early prerelease builds used their 50 cm lower bound as the
+                // starting value. Move only channels still holding that exact
+                // old default to the original panel's 2.1 m starting display;
+                // retain every other calibrated distance.
+                var migratedDistance = false
+                for channel in CalibrationChannel.allCases where calibrationDistanceCM[channel] == 50 {
+                    calibrationDistanceCM[channel] = 210
+                    migratedDistance = true
+                }
+                if migratedDistance {
+                    defaults.set(
+                        Dictionary(uniqueKeysWithValues: calibrationDistanceCM.map { ($0.key.rawValue, $0.value) }),
+                        forKey: key("speakers.distances")
+                    )
+                }
+                defaults.set(true, forKey: distanceMigrationKey)
             }
         }
         if storedSections.contains(.cinematic), let raw = defaults.string(forKey:key("cinematic.dolby")), let value = DolbyDRC(rawValue:raw) { dolby = value }

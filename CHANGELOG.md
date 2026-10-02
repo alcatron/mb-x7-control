@@ -16,6 +16,8 @@
   access and optional Open at Login.
 - Added the original MB X7 Control branding, protocol documentation and public
   build, privacy, support and contribution guides.
+- Matched the original speaker calibration range (−20 to +20 dB), 2.1 m
+  fresh-install distance and front-center Above/Below Screen positioning.
 - Set the initial distribution to source-only through GitHub under the MIT
   License with Commons Clause License Condition v1.0.
 - Retained optional Developer ID and notarized DMG tooling for a possible
