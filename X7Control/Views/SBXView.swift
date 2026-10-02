@@ -28,25 +28,30 @@ struct SBXView: View {
                             Spacer()
                             Text(c.sbxMasterEnabled ? "On" : "Off")
                                 .foregroundStyle(.secondary)
+                            if c.sbxMasterTransitionInProgress {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
                         }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(c.sbxMasterTransitionInProgress)
 
                     Divider()
 
                     Group {
                         Toggle("Surround", isOn: $c.surround)
                             .onChange(of: c.surround) { _, _ in c.setSurround() }
-                        LabeledSlider(title: "Amount", value: $c.surroundAmount, range: 0...1, defaultValue: 0.12, action: c.setSurroundAmount)
+                        LabeledSlider(title: "Amount", value: $c.surroundAmount, range: 0...1, defaultValue: SBXDefaults.surroundAmount, action: c.setSurroundAmount)
                         Divider()
                         Toggle("Crystalizer", isOn: $c.crystalizer)
                             .onChange(of: c.crystalizer) { _, _ in c.setCrystalizer() }
-                        LabeledSlider(title: "Amount", value: $c.crystalizerAmount, range: 0...1, defaultValue: 0.5, action: c.setCrystalizerAmount)
+                        LabeledSlider(title: "Amount", value: $c.crystalizerAmount, range: 0...1, defaultValue: SBXDefaults.crystalizerAmount, action: c.setCrystalizerAmount)
                         Divider()
                         Toggle("Dialog Plus", isOn: $c.dialog)
                             .onChange(of: c.dialog) { _, _ in c.setDialog() }
-                        LabeledSlider(title: "Amount", value: $c.dialogAmount, range: 0...1, defaultValue: 0.5, action: c.setDialogAmount)
+                        LabeledSlider(title: "Amount", value: $c.dialogAmount, range: 0...1, defaultValue: SBXDefaults.dialogAmount, action: c.setDialogAmount)
                         Divider()
                         Toggle("Smart Volume", isOn: $c.smartVolume)
                             .onChange(of: c.smartVolume) { _, _ in c.setSmart() }
@@ -55,7 +60,7 @@ struct SBXView: View {
                         }
                         .pickerStyle(.segmented)
                         .onChange(of: c.smartMode) { _, _ in c.setSmartMode() }
-                        LabeledSlider(title: "Amount", value: $c.smartVolumeAmount, range: 0...1, defaultValue: 0.74, action: c.setSmartAmount)
+                        LabeledSlider(title: "Amount", value: $c.smartVolumeAmount, range: 0...1, defaultValue: SBXDefaults.smartVolumeAmount, action: c.setSmartAmount)
                             .disabled(c.smartMode != .normal)
                     }
                     .disabled(!c.sbxMasterEnabled)
@@ -64,9 +69,9 @@ struct SBXView: View {
                 SectionCard("Bass") {
                     Toggle("Bass", isOn: displayedBassEnabled)
                         .onChange(of: c.sbxBass) { _, _ in c.setSBXBass() }
-                    LabeledSlider(title: "Amount", value: $c.sbxBassAmount, range: 0...1, defaultValue: 0.3, action: c.setSBXBassAmount)
+                    LabeledSlider(title: "Amount", value: $c.sbxBassAmount, range: 0...1, defaultValue: SBXDefaults.bassAmount, action: c.setSBXBassAmount)
                         .disabled(!c.sbxBass)
-                    LabeledSlider(title: "Crossover Frequency", value: $c.sbxBassCrossover, range: 10...500, suffix: "Hz", step: 1, defaultValue: 80, action: c.setSBXBassCrossover)
+                    LabeledSlider(title: "Crossover Frequency", value: $c.sbxBassCrossover, range: 10...500, suffix: "Hz", step: 1, defaultValue: SBXDefaults.bassCrossover, action: c.setSBXBassCrossover)
                         .disabled(!c.sbxBass)
 
                     if !c.headphonesConnected {

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.2
+
+- Corrected the SBX Pro Studio master control after tracing Creative's original
+  implementation: it now disables individual SBX blocks together and reliably
+  restores their saved settings when switched back on.
+- Added paced USB writes and a brief in-progress state so the X7 cannot drop
+  part of an SBX master transition or accept overlapping master commands.
+- Updated first-run and per-control reset values to the original panel defaults:
+  Surround 67%, Crystalizer 65%, Dialog Plus 50%, Normal Smart Volume 74%,
+  headphone Bass 20%, and headphone crossover 80 Hz.
+- Added clearly labelled Default buttons beside the SBX amount and crossover
+  controls while preserving each user's saved settings.
+- Kept SBX Bass restricted to the active headphone output path.
+- Documented the recovered SBX master behavior and corrected the earlier
+  interpretation of the X7's recurring hardware-status reports.
+
 ## 1.0.1
 
 - Expanded every speaker calibration level control to the original panel's

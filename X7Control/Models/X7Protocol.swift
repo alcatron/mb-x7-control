@@ -1,5 +1,14 @@
 import Foundation
 
+enum SBXDefaults {
+    static let surroundAmount = 0.67
+    static let crystalizerAmount = 0.65
+    static let dialogAmount = 0.50
+    static let smartVolumeAmount = 0.74
+    static let bassAmount = 0.20
+    static let bassCrossover = 80.0
+}
+
 enum X7Output: String, CaseIterable, Identifiable { case speakers = "Speakers", headphones = "Headphones"; var id: String { rawValue } }
 enum SmartVolumeMode: String, CaseIterable, Identifiable { case normal = "Normal", loud = "Loud", night = "Night"; var id:String{rawValue} }
 enum DolbyDRC: String, CaseIterable, Identifiable { case full = "Full", normal = "Normal", night = "Night"; var id:String{rawValue} }
@@ -121,10 +130,6 @@ struct X7Packets {
         [0x20,0x00,0x16,0x0A,0xD5,0x02,0x08,parameter,0x20,namespace] + beFloat(value) + [0x4D,0x00]
     }
     static func output(_ output:X7Output)->[UInt8] { output == .speakers ? [0x23,0x4E,0x00,0x00,0x00,0x80] : [0x23,0x4E,0x01,0x00,0x00,0x00] }
-    // The X7 exposes SBX master as the same hardware toggle used by the
-    // illuminated front-panel/panel power button; it is not a boolean DSP
-    // parameter like the individual SBX effects.
-    static func sbxMasterToggle() -> [UInt8] { [0x23,0x4D] }
     static func headphoneHighGain(_ on: Bool) -> [UInt8] { [0x23,0x45,on ? 1:0] }
     static func littleEndian(_ value: UInt32) -> [UInt8] { [UInt8(value & 0xff), UInt8((value >> 8) & 0xff), UInt8((value >> 16) & 0xff), UInt8((value >> 24) & 0xff)] }
     static func speakerLayout(_ layout: SpeakerLayout) -> [UInt8] { [0x23,0x4E] + littleEndian(layout.hardwareMask) }

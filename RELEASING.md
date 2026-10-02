@@ -7,7 +7,7 @@ source distribution through GitHub.
 ## Release target
 
 - Product: MB X7 Control
-- Version: 1.0.1 (2)
+- Version: 1.0.2 (3)
 - Platform: macOS 14 or later
 - Architecture: arm64 only
 - Initial distribution: source-only through GitHub

@@ -13,18 +13,19 @@ final class X7Controller: ObservableObject {
     @Published private(set) var headphonesConnected = false
     @Published var headphoneHighGain = false
     @Published var sbxMasterEnabled = true
+    @Published private(set) var sbxMasterTransitionInProgress = false
     @Published var surround = true
-    @Published var surroundAmount: Double = 0.12
+    @Published var surroundAmount = SBXDefaults.surroundAmount
     @Published var crystalizer = true
-    @Published var crystalizerAmount: Double = 0.5
+    @Published var crystalizerAmount = SBXDefaults.crystalizerAmount
     @Published var dialog = false
-    @Published var dialogAmount: Double = 0.5
+    @Published var dialogAmount = SBXDefaults.dialogAmount
     @Published var smartVolume = false
-    @Published var smartVolumeAmount: Double = 0.74
+    @Published var smartVolumeAmount = SBXDefaults.smartVolumeAmount
     @Published var smartMode: SmartVolumeMode = .normal
     @Published var sbxBass = true
-    @Published var sbxBassAmount: Double = 0.3
-    @Published var sbxBassCrossover: Double = 80
+    @Published var sbxBassAmount = SBXDefaults.bassAmount
+    @Published var sbxBassCrossover = SBXDefaults.bassCrossover
     @Published var eqEnabled = false
     @Published var eqLevel: Double = 0
     @Published var eqPreset: EQPreset = .flat
@@ -163,10 +164,54 @@ final class X7Controller: ObservableObject {
         write(X7Packets.headphoneHighGain(enabled), section: .output)
     }
     func toggleSBXMaster() {
-        guard !suppressUIWrites else { return }
-        guard send(X7Packets.sbxMasterToggle()) else { return }
-        sbxMasterEnabled.toggle()
-        persist(.sbx)
+        guard !suppressUIWrites, !sbxMasterTransitionInProgress else { return }
+        let enabling = !sbxMasterEnabled
+        let packets: [[UInt8]]
+
+        if enabling {
+            // Reapply the complete saved SBX state before enabling each block.
+            // The X7 can acknowledge a rapid burst while still dropping a
+            // subsequent DSP update, so these writes are paced below.
+            let smartModeValue: Float = smartMode == .normal ? 0 : smartMode == .loud ? 1 : 2
+            packets = [
+                X7Packets.dsp(0x02, value: Float(surroundAmount)),
+                X7Packets.dsp(0x00, value: surround ? 1 : 0),
+                X7Packets.dsp(0x10, value: Float(crystalizerAmount)),
+                X7Packets.dsp(0x0E, value: crystalizer ? 1 : 0),
+                X7Packets.dsp(0x06, value: Float(dialogAmount)),
+                X7Packets.dsp(0x04, value: dialog ? 1 : 0),
+                X7Packets.dsp(0x0A, value: Float(smartVolumeAmount)),
+                X7Packets.dsp(0x0C, value: smartModeValue),
+                X7Packets.dsp(0x08, value: smartVolume ? 1 : 0),
+                X7Packets.dsp(0x32, value: Float(sbxBassAmount)),
+                X7Packets.dsp(0x34, value: Float(sbxBassCrossover)),
+                X7Packets.dsp(
+                    0x30,
+                    value: sbxBass && headphonesConnected && output == .headphones ? 1 : 0
+                )
+            ]
+        } else {
+            packets = [0x00, 0x0E, 0x04, 0x08, 0x30].map {
+                X7Packets.dsp($0, value: 0)
+            }
+        }
+
+        sbxMasterTransitionInProgress = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.sbxMasterTransitionInProgress = false }
+
+            // Creative's manager serializes these operations internally. Give
+            // the hardware equivalent breathing room between direct HID writes.
+            for (index, packet) in packets.enumerated() {
+                guard self.send(packet) else { return }
+                if index < packets.count - 1 {
+                    try? await Task.sleep(nanoseconds: 80_000_000)
+                }
+            }
+            self.sbxMasterEnabled = enabling
+            self.persist(.sbx)
+        }
     }
     func setSurround(){ write(X7Packets.dsp(0x00,value:surround ? 1:0), section:.sbx) }
     func setSurroundAmount(){ write(X7Packets.dsp(0x02,value:Float(surroundAmount)), section:.sbx) }
@@ -228,20 +273,20 @@ final class X7Controller: ObservableObject {
     func applyCreativeDefaultProfile() {
         guard connected else { return }
         suppressUIWrites = true
-        surround = true; surroundAmount = 0.12
-        crystalizer = true; crystalizerAmount = 0.5
-        dialog = false; dialogAmount = 0.5
-        smartVolume = false; smartVolumeAmount = 0.74; smartMode = .normal
-        sbxBass = true; sbxBassAmount = 0.3; sbxBassCrossover = 80
+        surround = true; surroundAmount = SBXDefaults.surroundAmount
+        crystalizer = true; crystalizerAmount = SBXDefaults.crystalizerAmount
+        dialog = false; dialogAmount = SBXDefaults.dialogAmount
+        smartVolume = false; smartVolumeAmount = SBXDefaults.smartVolumeAmount; smartMode = .normal
+        sbxBass = true; sbxBassAmount = SBXDefaults.bassAmount; sbxBassCrossover = SBXDefaults.bassCrossover
         eqEnabled = false; eqLevel = 0; eqPreset = .flat
         for band in EQBand.allCases { eq[band] = 0 }
         dolby = .normal
 
         var packets: [[UInt8]] = [
-            X7Packets.dsp(0x00,value:1), X7Packets.dsp(0x02,value:0.12),
-            X7Packets.dsp(0x0E,value:1), X7Packets.dsp(0x10,value:0.5),
-            X7Packets.dsp(0x04,value:0), X7Packets.dsp(0x06,value:0.5),
-            X7Packets.dsp(0x08,value:0), X7Packets.dsp(0x0A,value:0.74),
+            X7Packets.dsp(0x00,value:1), X7Packets.dsp(0x02,value:Float(SBXDefaults.surroundAmount)),
+            X7Packets.dsp(0x0E,value:1), X7Packets.dsp(0x10,value:Float(SBXDefaults.crystalizerAmount)),
+            X7Packets.dsp(0x04,value:0), X7Packets.dsp(0x06,value:Float(SBXDefaults.dialogAmount)),
+            X7Packets.dsp(0x08,value:0), X7Packets.dsp(0x0A,value:Float(SBXDefaults.smartVolumeAmount)),
             X7Packets.dsp(0x0C,value:0), X7Packets.dsp(0x12,value:0),
             X7Packets.dsp(0x14,value:0)
         ] + EQBand.allCases.map { X7Packets.dsp($0.parameter,value:0) } + [
@@ -250,8 +295,8 @@ final class X7Controller: ObservableObject {
         // The original panel exposes this Bass block only on the headphone path.
         if headphonesConnected && output == .headphones {
             packets += [
-                X7Packets.dsp(0x30,value:1), X7Packets.dsp(0x32,value:0.3),
-                X7Packets.dsp(0x34,value:80)
+                X7Packets.dsp(0x30,value:1), X7Packets.dsp(0x32,value:Float(SBXDefaults.bassAmount)),
+                X7Packets.dsp(0x34,value:Float(SBXDefaults.bassCrossover))
             ]
         }
         var success = true

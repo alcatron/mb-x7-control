@@ -13,13 +13,11 @@ struct LabeledSlider:View {
             Slider(value:$value,in:range,step:step ?? (range.upperBound-range.lowerBound)/100,onEditingChanged:{if !$0{action()}})
             Text(display).monospacedDigit().frame(width:70,alignment:.trailing)
             if let defaultValue {
-                Button {
+                Button("Default") {
                     value = defaultValue
                     action()
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.bordered)
                 .help("Restore Creative default")
                 .accessibilityLabel("Restore \(title) default")
             }

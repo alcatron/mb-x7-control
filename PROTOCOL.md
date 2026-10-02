@@ -32,6 +32,15 @@ SBX Bass is gated by the X7 headphone output path. Its enable, amount, and
 crossover controls were recovered as `08 30`, `08 32`, and `08 34` in the
 `20 96` namespace.
 
+The SBX master button is not a standalone HID toggle. The original panel calls
+SoundCore parameter `0x7000000100000009` with a two-byte `[1, state]` payload;
+its `CEfxMasterControlClient` then disables the supported SBX effects together
+and restores their saved enable states when switched back on. MB X7 Control
+reproduces that resulting behavior with the independently verified explicit
+SBX parameters above. Two-byte reports such as `23 4C` and `23 4D` are part of
+the legacy panel's recurring hardware-status polling and are not used as the
+SBX master command.
+
 # 2. Equalizer — namespace 20 96
 
 | Function | Parameter |
