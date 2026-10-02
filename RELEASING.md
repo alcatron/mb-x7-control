@@ -1,13 +1,13 @@
 # Release process
 
-The initial MB X7 Control 1.0 release is source-only. Developer ID signing and
+The current MB X7 Control release is source-only. Developer ID signing and
 Apple notarization are deliberately deferred and are not blockers for the
-initial source distribution through GitHub.
+source distribution through GitHub.
 
 ## Release target
 
 - Product: MB X7 Control
-- Version: 1.0.0 (1)
+- Version: 1.0.1 (2)
 - Platform: macOS 14 or later
 - Architecture: arm64 only
 - Initial distribution: source-only through GitHub

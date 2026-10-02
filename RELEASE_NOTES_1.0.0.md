@@ -23,8 +23,6 @@ downloadable binary release.
 - Native Speakers and Headphones output control with front-jack detection
 - SBX Pro Studio, speaker routing and calibration, Cinematic, Mixer, EQ,
   Scout Mode, headphone gain, and Advanced controls
-- Speaker calibration from −20 to +20 dB, 0.5 to 5.0 m, plus front-center
-  Above/Below Screen positioning
 - Playback Mixer volume, mute, and balance through public USB Audio requests
 - CoreAudio master volume, mute, and playback/recording device selection
 - Persistent menu-bar access and optional Open at Login

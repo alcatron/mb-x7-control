@@ -121,8 +121,8 @@ func showMBX7AboutPanel() {
 
     Source-available under MIT + Commons Clause v1.0. Sale and paid redistribution are not permitted.
     """
-    let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-    let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+    let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.1"
+    let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "2"
     NSApplication.shared.orderFrontStandardAboutPanel(options: [
         .applicationName: "MB X7 Control",
         .applicationVersion: "\(version) (\(build))",

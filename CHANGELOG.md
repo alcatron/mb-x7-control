@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1
+
+- Expanded every speaker calibration level control to the original panel's
+  full −20 to +20 dB range in 1 dB steps.
+- Added Front Center Channel Position controls for Above Screen and Below
+  Screen on speaker layouts containing a center channel.
+- Changed the fresh-install speaker distance to the original panel's 2.1 m
+  starting display and migrated untouched prerelease 0.5 m placeholders.
+- Added the application screenshot gallery to the project README.
+
 ## 1.0.0
 
 - Initial native Apple-silicon release for macOS 14 and later.
@@ -16,8 +26,6 @@
   access and optional Open at Login.
 - Added the original MB X7 Control branding, protocol documentation and public
   build, privacy, support and contribution guides.
-- Matched the original speaker calibration range (−20 to +20 dB), 2.1 m
-  fresh-install distance and front-center Above/Below Screen positioning.
 - Set the initial distribution to source-only through GitHub under the MIT
   License with Commons Clause License Condition v1.0.
 - Retained optional Developer ID and notarized DMG tooling for a possible
