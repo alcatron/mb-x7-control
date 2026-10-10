@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3
+
+- Changed MB X7 Control into a menu-bar utility so Open at Login runs quietly
+  in the background without leaving an icon in the Dock or Command-Tab.
+- Kept the complete controller available from **Show MB X7 Control** in the
+  menu-bar menu, along with About, Open at Login, and Quit.
+
 ## 1.0.2
 
 - Corrected the SBX Pro Studio master control after tracing Creative's original

@@ -68,7 +68,8 @@ is not permitted.
 - X7 Speakers master volume and mute through CoreAudio
 - Five-source Playback Mixer volume, mute, and L/R balance through USB Audio feature units
 - Utility menu with Restore Default, persistent macOS playback/recording device selection, and About
-- macOS menu-bar access with an optional Open at Login setting
+- Background menu-bar operation with no Dock icon and an optional Open at
+  Login setting
 
 ### Deliberately not faked
 
