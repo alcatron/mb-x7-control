@@ -34,8 +34,9 @@ and crossover controls are `08 30`, `08 32`, and `08 2E` in module `20 96`.
 SBX master is a dedicated four-byte command: `23 23 01 00|01`. The X7 disables
 or restores the previously enabled effect blocks and reports the resulting
 parameters itself. SBX and Scout form a mutually exclusive three-way mode.
-Two-byte reports such as `23 4C` and `23 4D` are recurring hardware-status
-queries and are not the master command.
+Query `23 24` returns `00 23 24 00 [mode]...`, where `0` means neither SBX nor
+Scout, `1` means SBX, and `2` means Scout. These values were independently
+confirmed by switching each mode and reading the reply from the physical X7.
 
 # 2. Equalizer — namespace 20 96
 
@@ -181,14 +182,28 @@ Preserve the complete captured reports; do not assume only the state byte differ
 
 The selector became active only after a headphone plug was physically detected.
 
+Query `23 4D` returns `00 23 4D 00 [configuration]...`. Configuration `1` is
+the headphone path; other observed values are speaker configurations. This lets
+the UI follow automatic output changes caused by inserting or removing a plug
+without guessing from jack presence alone.
+
 ## Front headphone-jack detection
 
 The X7 uses its public HID interface, not the older Creative U2 USB-device
 request. Send output report `23 12` with report ID 0. The 16-byte input reply
 starts `00 23 12`. In byte 4, bit 0 reports the 6.3 mm headphone socket, bit 1
 reports the microphone socket, and bit 2 reports the 3.5 mm headphone socket.
-MB X7 Control treats either headphone bit as headphone availability and performs
-the query independently with public IOKit APIs.
+MB X7 Control treats either headphone bit as headphone availability, exposes
+the microphone bit separately, and performs the query independently with public
+IOKit APIs.
+
+## Physical volume dial
+
+Each clockwise detent emits a 16-byte HID input report beginning with `01`; each
+anticlockwise detent begins with `02`. A zero-filled release report follows each
+detent. The X7's USB Audio/CoreAudio master volume changes with the dial, so MB
+X7 Control reads that authoritative scalar during live status reconciliation
+instead of estimating a synthetic step from the direction report.
 
 # 8. Cinematic / Dolby Digital Dynamic Range Control — namespace 20 97
 
@@ -207,8 +222,8 @@ Confirmed HID reports:
 - OFF: `23 23 02 00`
 
 The state byte is the fourth byte (`01`/`00`). Enabling Scout makes SBX master
-inactive, and enabling SBX master makes Scout inactive. A separate `23 24`
-query was observed around these changes but remains unidentified.
+inactive, and enabling SBX master makes Scout inactive. The current three-way
+state is read with the confirmed `23 24` query documented in section 1.
 
 # 10. Auto Standby / AutoSleep
 
@@ -320,7 +335,8 @@ Observed AudioObjectID `0x86`, 4-byte value:
 - Some Recording mixer controls: greyed/unavailable.
 - SoundCore Mixer payload byte 1 remains semantically unknown but is discarded
   before USB transport and is not required by the independent implementation.
-- `23 24 ...`: observed around Scout Mode; unknown.
+- Full per-parameter DSP readback is not yet implemented; output, front-jack,
+  SBX/Scout mode, CoreAudio master, and Playback Mixer state are read live.
 - Headphone gain: `23 45 00` Normal / `23 45 01` High Gain. The app guards High Gain with an explicit safety confirmation.
 - Custom EQ Save/Delete: not reverse-engineered; likely app-side preset management and not required to control DSP state.
 

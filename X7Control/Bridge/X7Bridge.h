@@ -11,7 +11,10 @@ FOUNDATION_EXPORT BOOL X7ReadMasterVolume(float *scalar);
 FOUNDATION_EXPORT BOOL X7ReadMasterMute(BOOL *muted);
 FOUNDATION_EXPORT NSArray<NSDictionary<NSString *, id> *> *X7AudioDevices(BOOL input);
 FOUNDATION_EXPORT BOOL X7SetDefaultAudioDevice(uint32_t deviceID, BOOL input);
-FOUNDATION_EXPORT BOOL X7ReadHeadphoneJackInserted(BOOL *inserted);
+FOUNDATION_EXPORT BOOL X7ReadFrontJackState(BOOL *headphonesInserted, BOOL *microphoneInserted);
+FOUNDATION_EXPORT BOOL X7ReadOutputIsHeadphones(BOOL *headphonesOutput);
+// 0 = neither SBX nor Scout, 1 = SBX, 2 = Scout.
+FOUNDATION_EXPORT BOOL X7ReadSoundMode(uint8_t *mode);
 
 // Playback-source monitoring controls exposed by the X7's USB Audio feature
 // units. Channel 0 means both stereo channels; 1 and 2 mean left and right.

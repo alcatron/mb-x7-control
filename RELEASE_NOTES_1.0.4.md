@@ -19,6 +19,10 @@ local control paths.
   longest configured distance.
 - Corrected overall EQ Level to ±6 dB; individual bands remain ±12 dB.
 - Detects headphones in either front headphone socket.
+- Tracks automatic headphone/speaker routing and physical SBX-button changes
+  through the X7's live status queries.
+- Detects the front microphone jack and keeps master volume/mute synchronized
+  with hardware changes, including turns of the physical X7 volume dial.
 
 ## Distribution
 

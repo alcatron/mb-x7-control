@@ -303,45 +303,51 @@ static void releaseX7USBControlInterface(X7USBControlInterface *control) {
 
 typedef struct {
     BOOL received;
-    BOOL inserted;
-} X7JackQueryContext;
+    uint8_t command0;
+    uint8_t command1;
+    uint8_t value;
+} X7StatusQueryContext;
 
-static void x7JackInputReport(void *context,
-                              IOReturn result,
-                              void *sender,
-                              IOHIDReportType type,
-                              uint32_t reportID,
-                              uint8_t *report,
-                              CFIndex length) {
+static void x7StatusInputReport(void *context,
+                               IOReturn result,
+                               void *sender,
+                               IOHIDReportType type,
+                               uint32_t reportID,
+                               uint8_t *report,
+                               CFIndex length) {
     (void)sender; (void)type; (void)reportID;
-    X7JackQueryContext *query = context;
-    // The X7 reply is 00 23 12 ss jj.... In jj, bit 0 is the 6.3 mm
-    // headphone socket and bit 2 is the 3.5 mm
-    // socket, and bit 1 is the microphone input. Ignore unrelated reports.
+    X7StatusQueryContext *query = context;
+    // Status replies are 00 [command0] [command1] 00 [value].... Ignore
+    // unsolicited DSP reports while waiting for the requested status family.
     if (result == kIOReturnSuccess && length >= 5 &&
-        report[1] == 0x23 && report[2] == 0x12) {
-        query->inserted = (report[4] & 0x05) != 0;
+        report[1] == query->command0 && report[2] == query->command1) {
+        query->value = report[4];
         query->received = YES;
     }
 }
 
-BOOL X7ReadHeadphoneJackInserted(BOOL *inserted) {
-    if (!inserted) return NO;
+static BOOL x7ReadStatus(uint8_t command0, uint8_t command1, uint8_t *value) {
+    if (!value) return NO;
     IOHIDManagerRef manager = NULL;
     IOHIDDeviceRef device = copyX7(&manager);
     if (!device) return NO;
 
     uint8_t inputBuffer[128] = {0};
-    X7JackQueryContext query = {0};
+    X7StatusQueryContext query = {
+        .received = NO,
+        .command0 = command0,
+        .command1 = command1,
+        .value = 0
+    };
     IOHIDDeviceRegisterInputReportCallback(device,
                                            inputBuffer,
                                            sizeof(inputBuffer),
-                                           x7JackInputReport,
+                                           x7StatusInputReport,
                                            &query);
     IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     IOReturn status = IOHIDDeviceOpen(device, kIOHIDOptionsTypeNone);
     if (status == kIOReturnSuccess) {
-        const uint8_t command[] = {0x23, 0x12};
+        const uint8_t command[] = {command0, command1};
         status = IOHIDDeviceSetReport(device,
                                       kIOHIDReportTypeOutput,
                                       0,
@@ -362,7 +368,34 @@ BOOL X7ReadHeadphoneJackInserted(BOOL *inserted) {
     CFRelease(manager);
 
     if (status != kIOReturnSuccess || !query.received) return NO;
-    *inserted = query.inserted;
+    *value = query.value;
+    return YES;
+}
+
+BOOL X7ReadFrontJackState(BOOL *headphonesInserted, BOOL *microphoneInserted) {
+    if (!headphonesInserted || !microphoneInserted) return NO;
+    uint8_t state = 0;
+    if (!x7ReadStatus(0x23, 0x12, &state)) return NO;
+    *headphonesInserted = (state & 0x05) != 0;
+    *microphoneInserted = (state & 0x02) != 0;
+    return YES;
+}
+
+BOOL X7ReadOutputIsHeadphones(BOOL *headphonesOutput) {
+    if (!headphonesOutput) return NO;
+    uint8_t configuration = 0;
+    if (!x7ReadStatus(0x23, 0x4D, &configuration)) return NO;
+    // Configuration 1 is the headphone path. Other observed values are
+    // speaker configurations, including stereo and multichannel modes.
+    *headphonesOutput = configuration == 1;
+    return YES;
+}
+
+BOOL X7ReadSoundMode(uint8_t *mode) {
+    if (!mode) return NO;
+    uint8_t value = 0;
+    if (!x7ReadStatus(0x23, 0x24, &value) || value > 2) return NO;
+    *mode = value;
     return YES;
 }
 

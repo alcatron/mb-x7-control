@@ -11,6 +11,7 @@ final class X7Controller: ObservableObject {
     @Published var lastError:String?
     @Published var output:X7Output? = .speakers
     @Published private(set) var headphonesConnected = false
+    @Published private(set) var microphoneConnected = false
     @Published private(set) var outputTransitionInProgress = false
     @Published var headphoneHighGain = false
     @Published var sbxMasterEnabled = true
@@ -61,7 +62,7 @@ final class X7Controller: ObservableObject {
     @Published private(set) var storedSections = Set<SettingsSection>()
     private var deviceIdentifier = "041e-323a"
     private var suppressUIWrites = false
-    private var jackQueryInFlight = false
+    private var statusQueryInFlight = false
     private var savedMasterMute: Bool?
     private var savedPlaybackMutes: [PlaybackSource: Bool] = [:]
 
@@ -83,9 +84,8 @@ final class X7Controller: ObservableObject {
     func refreshConnection(){
         let wasConnected = connected
         connected = X7IsConnected()
-        // Read hardware state once per connection transition. The two-second
-        // timer otherwise checks presence and jack state only; opening Mixer or
-        // pressing the header refresh button requests fresh audio values.
+        // Load app-side choices once, then continuously reconcile the states
+        // the X7 exposes directly (jacks, output, SBX/Scout and CoreAudio).
         if connected && !wasConnected {
             suppressWritesUntilNextRunLoop()
             deviceIdentifier = X7DeviceIdentifier() ?? "041e-323a"
@@ -94,9 +94,10 @@ final class X7Controller: ObservableObject {
             restoreSavedMasterMute()
             refreshPlaybackMixer(restoreSavedMutes: true)
         }
-        if connected { refreshHeadphoneJack() }
+        if connected { refreshHardwareStatus() }
         if !connected {
             headphonesConnected = false
+            microphoneConnected = false
             masterStateAvailable = false
             for source in PlaybackSource.allCases { playbackSources[source]?.available = false }
         }
@@ -109,23 +110,58 @@ final class X7Controller: ObservableObject {
         refreshPlaybackMixer()
     }
 
-    private func refreshHeadphoneJack() {
-        guard !jackQueryInFlight else { return }
-        jackQueryInFlight = true
+    private func refreshHardwareStatus() {
+        guard !statusQueryInFlight else { return }
+        statusQueryInFlight = true
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            var inserted = ObjCBool(false)
-            let available = X7ReadHeadphoneJackInserted(&inserted)
-            let isInserted = available && inserted.boolValue
+            var headphonesInserted = ObjCBool(false)
+            var microphoneInserted = ObjCBool(false)
+            let hasJackState = X7ReadFrontJackState(&headphonesInserted, &microphoneInserted)
+
+            var headphonesOutput = ObjCBool(false)
+            let hasOutputState = X7ReadOutputIsHeadphones(&headphonesOutput)
+
+            var soundMode: UInt8 = 0
+            let hasSoundMode = X7ReadSoundMode(&soundMode)
+
+            var volume: Float = 0
+            var muted = ObjCBool(false)
+            let hasVolume = X7ReadMasterVolume(&volume)
+            let hasMute = X7ReadMasterMute(&muted)
+
             DispatchQueue.main.async {
                 guard let self else { return }
-                self.jackQueryInFlight = false
+                self.statusQueryInFlight = false
                 guard self.connected else {
                     self.headphonesConnected = false
+                    self.microphoneConnected = false
                     return
                 }
-                self.headphonesConnected = isInserted
-                if !isInserted && self.output == .headphones {
+
+                if hasJackState {
+                    self.headphonesConnected = headphonesInserted.boolValue
+                    self.microphoneConnected = microphoneInserted.boolValue
+                }
+
+                let readOutput: X7Output? = hasOutputState
+                    ? (headphonesOutput.boolValue ? .headphones : .speakers)
+                    : nil
+                let modeChanged = hasSoundMode &&
+                    (self.sbxMasterEnabled != (soundMode == 1) || self.scout != (soundMode == 2))
+                let masterChanged = hasVolume && hasMute &&
+                    (abs(self.masterVolume - Double(volume)) > 0.0005 || self.masterMute != muted.boolValue)
+                if (readOutput != nil && self.output != readOutput) || modeChanged || masterChanged {
                     self.suppressWritesUntilNextRunLoop()
+                }
+                if let readOutput { self.output = readOutput }
+                if hasSoundMode {
+                    self.sbxMasterEnabled = soundMode == 1
+                    self.scout = soundMode == 2
+                }
+                if hasVolume { self.masterVolume = Double(volume) }
+                if hasMute { self.masterMute = muted.boolValue }
+                self.masterStateAvailable = hasVolume && hasMute
+                if !self.headphonesConnected && self.output == .headphones && !hasOutputState {
                     self.output = .speakers
                 }
             }

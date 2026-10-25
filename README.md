@@ -50,6 +50,7 @@ is not permitted.
 
 - USB connection detection (Creative VID `041e`, X7 PID `323a`)
 - Live Speakers / Headphones output switching
+- Live output, headphone/microphone jack, SBX/Scout and master-volume status
 - SBX master, Surround, Crystalizer, Dialog Plus and Smart Volume
 - SBX Bass amount and crossover controls for speaker and headphone output
 - Smart Volume Normal / Loud / Night modes
@@ -75,7 +76,7 @@ is not permitted.
 
 The legacy macOS panel exposes CrystalVoice disabled on this X7 configuration, so MB X7 Control does not invent support for it.
 
-Master volume and Playback Mixer values are read directly from the connected X7. Other controls open with the last choices saved for that X7, or Creative-compatible starting values when no saved choice exists. Saved macOS playback/recording selections and saved Mixer mute choices are intentionally restored at launch or reconnect; other hardware settings are sent only when the user changes their controls. The explicit Creative Default action applies only the supported SBX, EQ and Dolby profile values and does not alter speaker layout, routing, amplification, calibration, Direct Mode, Scout Mode or standby.
+Output routing, front-jack status, SBX/Scout mode, master volume and Playback Mixer values are read directly from the connected X7. Other controls open with the last choices saved for that X7, or Creative-compatible starting values when no saved choice exists. Saved macOS playback/recording selections and saved Mixer mute choices are intentionally restored at launch or reconnect; other hardware settings are sent only when the user changes their controls. The explicit Creative Default action applies only the supported SBX, EQ and Dolby profile values and does not alter speaker layout, routing, amplification, calibration, Direct Mode, Scout Mode or standby.
 
 Playback Mixer uses the X7's standard USB Audio class requests directly through
 public IOKit. The Creative application and its private frameworks are neither

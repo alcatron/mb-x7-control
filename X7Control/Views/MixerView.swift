@@ -52,6 +52,12 @@ private struct PlaybackSourceStrip: View {
   VStack(alignment:.leading,spacing:10){
    HStack {
    Text(source.label).font(.headline)
+   if source == .mic {
+    Label(c.microphoneConnected ? "Front mic connected" : "Front mic not detected",
+          systemImage: c.microphoneConnected ? "mic.fill" : "mic.slash")
+     .font(.caption)
+     .foregroundStyle(.secondary)
+   }
    Spacer()
     Toggle("Mute",isOn:muted).onChange(of:state.muted){_,_ in c.setPlaybackMute(source)}
    }

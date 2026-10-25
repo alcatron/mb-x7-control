@@ -2,6 +2,11 @@
 
 ## 1.0.4
 
+- Added continuous hardware reconciliation for current output routing,
+  SBX/Scout mode, both headphone sockets, the front microphone socket and
+  CoreAudio master state, including physical X7 volume-dial changes.
+- Identified the `23 24` query as the X7's three-way SBX/Scout mode status and
+  the `23 4D` query as the current headphone/speaker output family.
 - Corrected the SBX Bass crossover, Front Full-Range and Rear Full-Range DSP
   parameters, removing collisions with speaker and EQ controls.
 - Changed DSP writes to the original controller's exact 14-byte packet format.
