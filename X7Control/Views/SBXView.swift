@@ -3,17 +3,6 @@ import SwiftUI
 struct SBXView: View {
     @ObservedObject var c: X7Controller
 
-    private var headphoneBassAvailable: Bool {
-        c.headphonesConnected && c.output == .headphones
-    }
-
-    private var displayedBassEnabled: Binding<Bool> {
-        Binding(
-            get: { headphoneBassAvailable && c.sbxBass },
-            set: { c.sbxBass = $0 }
-        )
-    }
-
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -67,24 +56,14 @@ struct SBXView: View {
                 }
 
                 SectionCard("Bass") {
-                    Toggle("Bass", isOn: displayedBassEnabled)
+                    Toggle("Bass", isOn: $c.sbxBass)
                         .onChange(of: c.sbxBass) { _, _ in c.setSBXBass() }
                     LabeledSlider(title: "Amount", value: $c.sbxBassAmount, range: 0...1, defaultValue: SBXDefaults.bassAmount, action: c.setSBXBassAmount)
                         .disabled(!c.sbxBass)
                     LabeledSlider(title: "Crossover Frequency", value: $c.sbxBassCrossover, range: 10...500, suffix: "Hz", step: 1, defaultValue: SBXDefaults.bassCrossover, action: c.setSBXBassCrossover)
                         .disabled(!c.sbxBass)
-
-                    if !c.headphonesConnected {
-                        Text("Available when headphones are connected to either front headphone socket.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if c.output != .headphones {
-                        Text("Select Headphones in the output control to use SBX Bass.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 }
-                .disabled(!c.sbxMasterEnabled || !headphoneBassAvailable)
+                .disabled(!c.sbxMasterEnabled)
 
                 SectionCard("Unavailable on this Mac configuration") {
                     UnsupportedRow(title: "CrystalVoice", reason: "The legacy macOS panel exposes these controls disabled; they are intentionally not emulated.")

@@ -315,11 +315,12 @@ static void x7JackInputReport(void *context,
                               CFIndex length) {
     (void)sender; (void)type; (void)reportID;
     X7JackQueryContext *query = context;
-    // The X7 reply is 00 23 12 ss jj..., where bit 2 of jj is the front
-    // headphone jack. Ignore unrelated asynchronous HID notifications.
+    // The X7 reply is 00 23 12 ss jj.... In jj, bit 0 is the 6.3 mm
+    // headphone socket and bit 2 is the 3.5 mm
+    // socket, and bit 1 is the microphone input. Ignore unrelated reports.
     if (result == kIOReturnSuccess && length >= 5 &&
         report[1] == 0x23 && report[2] == 0x12) {
-        query->inserted = (report[4] & 0x04) != 0;
+        query->inserted = (report[4] & 0x05) != 0;
         query->received = YES;
     }
 }

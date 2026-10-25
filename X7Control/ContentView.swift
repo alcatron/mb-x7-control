@@ -118,6 +118,7 @@ struct ContentView: View {
             .frame(width: 250)
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
             .help(controller.headphonesConnected ? "Select the X7 output" : "Plug headphones into the X7 front headphone jack to enable Headphones")
+            .disabled(controller.outputTransitionInProgress)
 
             Menu {
                 Button("Restore Default…") { confirmDefaults = true }

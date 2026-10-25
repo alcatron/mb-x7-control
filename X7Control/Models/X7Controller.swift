@@ -11,6 +11,7 @@ final class X7Controller: ObservableObject {
     @Published var lastError:String?
     @Published var output:X7Output? = .speakers
     @Published private(set) var headphonesConnected = false
+    @Published private(set) var outputTransitionInProgress = false
     @Published var headphoneHighGain = false
     @Published var sbxMasterEnabled = true
     @Published private(set) var sbxMasterTransitionInProgress = false
@@ -158,7 +159,19 @@ final class X7Controller: ObservableObject {
         guard !suppressUIWrites else { return }
         if send(packet) { persist(section) }
     }
-    func setOutput(){ guard let output else { return }; write(X7Packets.output(output), section: .output) }
+    func setOutput(){
+        guard !suppressUIWrites, !outputTransitionInProgress, let output else { return }
+        outputTransitionInProgress = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.outputTransitionInProgress = false }
+            if output == .headphones {
+                guard self.send(X7Packets.disableSpeakerLayoutForHeadphones()) else { return }
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+            if self.send(X7Packets.output(output)) { self.persist(.output) }
+        }
+    }
     func setHeadphoneHighGain(_ enabled: Bool) {
         headphoneHighGain = enabled
         write(X7Packets.headphoneHighGain(enabled), section: .output)
@@ -166,51 +179,15 @@ final class X7Controller: ObservableObject {
     func toggleSBXMaster() {
         guard !suppressUIWrites, !sbxMasterTransitionInProgress else { return }
         let enabling = !sbxMasterEnabled
-        let packets: [[UInt8]]
-
-        if enabling {
-            // Reapply the complete saved SBX state before enabling each block.
-            // The X7 can acknowledge a rapid burst while still dropping a
-            // subsequent DSP update, so these writes are paced below.
-            let smartModeValue: Float = smartMode == .normal ? 0 : smartMode == .loud ? 1 : 2
-            packets = [
-                X7Packets.dsp(0x02, value: Float(surroundAmount)),
-                X7Packets.dsp(0x00, value: surround ? 1 : 0),
-                X7Packets.dsp(0x10, value: Float(crystalizerAmount)),
-                X7Packets.dsp(0x0E, value: crystalizer ? 1 : 0),
-                X7Packets.dsp(0x06, value: Float(dialogAmount)),
-                X7Packets.dsp(0x04, value: dialog ? 1 : 0),
-                X7Packets.dsp(0x0A, value: Float(smartVolumeAmount)),
-                X7Packets.dsp(0x0C, value: smartModeValue),
-                X7Packets.dsp(0x08, value: smartVolume ? 1 : 0),
-                X7Packets.dsp(0x32, value: Float(sbxBassAmount)),
-                X7Packets.dsp(0x34, value: Float(sbxBassCrossover)),
-                X7Packets.dsp(
-                    0x30,
-                    value: sbxBass && headphonesConnected && output == .headphones ? 1 : 0
-                )
-            ]
-        } else {
-            packets = [0x00, 0x0E, 0x04, 0x08, 0x30].map {
-                X7Packets.dsp($0, value: 0)
-            }
-        }
-
         sbxMasterTransitionInProgress = true
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer { self.sbxMasterTransitionInProgress = false }
-
-            // Creative's manager serializes these operations internally. Give
-            // the hardware equivalent breathing room between direct HID writes.
-            for (index, packet) in packets.enumerated() {
-                guard self.send(packet) else { return }
-                if index < packets.count - 1 {
-                    try? await Task.sleep(nanoseconds: 80_000_000)
-                }
+        defer { sbxMasterTransitionInProgress = false }
+        if send(X7Packets.sbxMaster(enabling)) {
+            sbxMasterEnabled = enabling
+            if enabling {
+                scout = false
+                persist(.advanced)
             }
-            self.sbxMasterEnabled = enabling
-            self.persist(.sbx)
+            persist(.sbx)
         }
     }
     func setSurround(){ write(X7Packets.dsp(0x00,value:surround ? 1:0), section:.sbx) }
@@ -224,11 +201,11 @@ final class X7Controller: ObservableObject {
     func setSmartMode(){ let v:Float = smartMode == .normal ? 0 : smartMode == .loud ? 1:2; write(X7Packets.dsp(0x0C,value:v), section:.sbx) }
     func setSBXBass(){ write(X7Packets.dsp(0x30,value:sbxBass ? 1:0), section:.sbx) }
     func setSBXBassAmount(){ write(X7Packets.dsp(0x32,value:Float(sbxBassAmount)), section:.sbx) }
-    func setSBXBassCrossover(){ write(X7Packets.dsp(0x34,value:Float(sbxBassCrossover)), section:.sbx) }
+    func setSBXBassCrossover(){ write(X7Packets.dsp(0x2E,value:Float(sbxBassCrossover)), section:.sbx) }
     func setSpeakerLayout(){ write(X7Packets.speakerLayout(layout), section:.speakers) }
     func setSpeakerOutputTarget(){ write(X7Packets.speakerOutputTarget(speakerOutputTarget), section:.speakers) }
-    func setFrontFullRange(){ write(X7Packets.dsp(0x1A,value:frontFullRange ? 0:1), section:.speakers) }
-    func setRearFullRange(){ write(X7Packets.dsp(0x1C,value:rearFullRange ? 0:1), section:.speakers) }
+    func setFrontFullRange(){ write(X7Packets.dsp(0x34,value:frontFullRange ? 0:1), section:.speakers) }
+    func setRearFullRange(){ write(X7Packets.dsp(0x38,value:rearFullRange ? 0:1), section:.speakers) }
     func setHighPowerAmplification(){ write(X7Packets.highPowerAmplification(highPowerAmplification), section:.speakers) }
     func setHeadphoneSurroundOverSpeakerOutput(){ write(X7Packets.headphoneSurroundOverSpeakerOutput(headphoneSurroundOverSpeakerOutput), section:.speakers) }
     func setBassRedirection(){ write(X7Packets.dsp(0x2A,value:bassRedirection ? 1:0), section:.speakers) }
@@ -237,7 +214,16 @@ final class X7Controller: ObservableObject {
     func setDirect(){ write(X7Packets.direct(directMode), section:.speakers) }
     func setSPDIFDirect(){ write(X7Packets.spdifDirect(spdifDirect), section:.speakers) }
     func setDolby(){ let v:Float = dolby == .full ? 1 : dolby == .normal ? 2:3; write(X7Packets.dsp(0x04,namespace:0x97,value:v), section:.cinematic) }
-    func setScout(){ write(X7Packets.scout(scout), section:.advanced) }
+    func setScout(){
+        guard !suppressUIWrites else { return }
+        if send(X7Packets.scout(scout)) {
+            if scout {
+                sbxMasterEnabled = false
+                persist(.sbx)
+            }
+            persist(.advanced)
+        }
+    }
     func setStandby(){ write(X7Packets.standby(autoStandby), section:.advanced) }
     func setSpeakerModel(){ write(X7Packets.speakerModel(speakerModel), section:.speakers) }
     func setSpeakerVoicing(){ write(X7Packets.speakerVoicing(speakerVoicing), section:.speakers) }
@@ -260,13 +246,15 @@ final class X7Controller: ObservableObject {
     func setCalibrationDistances(){
         // Creative stores distance as the acoustic delay from each speaker to the
         // farthest speaker. Its original panel uses 1 / 34342 seconds per cm.
-        let channels = layout.calibrationChannels
+        let channels = CalibrationChannel.allCases
         let longest = channels.map { calibrationDistanceCM[$0] ?? 210 }.max() ?? 210
         let secondsPerCentimeter: Double = 2.91188631995807e-5
         for channel in channels {
             let delay = Float((longest - (calibrationDistanceCM[channel] ?? 210)) * secondsPerCentimeter)
             guard send(X7Packets.dsp(channel.distanceParam,value:delay)) else { return }
         }
+        let storedLongest = UInt16(max(0, min(Double(UInt16.max), longest)).rounded())
+        guard send(X7Packets.longestSpeakerDistance(storedLongest)) else { return }
         persist(.speakers)
     }
 
@@ -278,11 +266,13 @@ final class X7Controller: ObservableObject {
         dialog = false; dialogAmount = SBXDefaults.dialogAmount
         smartVolume = false; smartVolumeAmount = SBXDefaults.smartVolumeAmount; smartMode = .normal
         sbxBass = true; sbxBassAmount = SBXDefaults.bassAmount; sbxBassCrossover = SBXDefaults.bassCrossover
+        sbxMasterEnabled = true; scout = false
         eqEnabled = false; eqLevel = 0; eqPreset = .flat
         for band in EQBand.allCases { eq[band] = 0 }
         dolby = .normal
 
-        var packets: [[UInt8]] = [
+        let packets: [[UInt8]] = [
+            X7Packets.sbxMaster(true),
             X7Packets.dsp(0x00,value:1), X7Packets.dsp(0x02,value:Float(SBXDefaults.surroundAmount)),
             X7Packets.dsp(0x0E,value:1), X7Packets.dsp(0x10,value:Float(SBXDefaults.crystalizerAmount)),
             X7Packets.dsp(0x04,value:0), X7Packets.dsp(0x06,value:Float(SBXDefaults.dialogAmount)),
@@ -291,18 +281,14 @@ final class X7Controller: ObservableObject {
             X7Packets.dsp(0x14,value:0)
         ] + EQBand.allCases.map { X7Packets.dsp($0.parameter,value:0) } + [
             X7Packets.dsp(0x04,namespace:0x97,value:2)
+        ] + [
+            X7Packets.dsp(0x30,value:1), X7Packets.dsp(0x32,value:Float(SBXDefaults.bassAmount)),
+            X7Packets.dsp(0x2E,value:Float(SBXDefaults.bassCrossover))
         ]
-        // The original panel exposes this Bass block only on the headphone path.
-        if headphonesConnected && output == .headphones {
-            packets += [
-                X7Packets.dsp(0x30,value:1), X7Packets.dsp(0x32,value:Float(SBXDefaults.bassAmount)),
-                X7Packets.dsp(0x34,value:Float(SBXDefaults.bassCrossover))
-            ]
-        }
         var success = true
         for packet in packets where success { success = send(packet) }
         if success {
-            persist(.sbx); persist(.equalizer); persist(.cinematic)
+            persist(.sbx); persist(.equalizer); persist(.cinematic); persist(.advanced)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.suppressUIWrites = false }
     }
@@ -392,7 +378,7 @@ final class X7Controller: ObservableObject {
             }
         }
         if storedSections.contains(.equalizer) {
-            eqEnabled = defaults.bool(forKey:key("eq.enabled")); eqLevel = defaults.double(forKey:key("eq.level"))
+            eqEnabled = defaults.bool(forKey:key("eq.enabled")); eqLevel = max(-6, min(6, defaults.double(forKey:key("eq.level"))))
             if let raw = defaults.string(forKey:key("eq.preset")), let value = EQPreset(rawValue:raw) { eqPreset = value }
             if let bands = defaults.dictionary(forKey:key("eq.bands")) as? [String:Double] {
                 for band in EQBand.allCases { if let value = bands[band.rawValue] { eq[band] = value } }

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define CREATIVE_VID 0x041e
 
@@ -61,7 +62,7 @@ static int send_report(const uint8_t *p,size_t n, Options o) {
 }
 static void put_be_float(uint8_t *p,float f){uint32_t u;memcpy(&u,&f,4);u=htonl(u);memcpy(p,&u,4);}
 static int dsp(uint8_t paramLo,uint8_t ns,float value,Options o){
-    uint8_t p[16]={0x20,0x00,0x16,0x0A,0xD5,0x02,0x08,paramLo,0x20,ns,0,0,0,0,0x4D,0x00}; put_be_float(&p[10],value); return send_report(p,sizeof p,o);
+    uint8_t p[14]={0x20,0x00,0x16,0x0A,0xD5,0x02,0x08,paramLo,0x20,ns,0,0,0,0}; put_be_float(&p[10],value); return send_report(p,sizeof p,o);
 }
 static int onoff(const char *s,bool *v){if(!strcmp(s,"on")){*v=true;return 0;}if(!strcmp(s,"off")){*v=false;return 0;}return -1;}
 static void usage(void){
@@ -77,6 +78,7 @@ static void usage(void){
       "  x7ctl [--apply] smart-volume on|off\n"
       "  x7ctl [--apply] smart-volume amount 0.0..1.0\n"
       "  x7ctl [--apply] smart-volume mode normal|loud|night\n"
+      "  x7ctl [--apply] sbx-master on|off\n"
       "  x7ctl [--apply] direct on|off\n"
       "  x7ctl [--apply] spdif-direct on|off\n"
       "  x7ctl [--apply] output speakers|headphones\n"
@@ -87,7 +89,7 @@ static void usage(void){
       "  x7ctl [--apply] subwoofer-gain on|off\n"
       "  x7ctl [--apply] dolby-drc full|normal|night\n"
       "  x7ctl [--apply] eq on|off\n"
-      "  x7ctl [--apply] eq level -12..12\n"
+      "  x7ctl [--apply] eq level -6..6\n"
       "  x7ctl [--apply] eq band 31|62|125|250|500|1k|2k|4k|8k|16k -12..12\n"
       "  x7ctl [--apply] eq preset flat|acoustic|classical|country|dance|jazz|newage|pop|rock|vocal\n"
       "Default is DRY RUN. --apply performs the hardware write.");
@@ -112,7 +114,8 @@ int main(int argc,char **argv){
         if(i<argc&&!strcmp(argv[i],"mode")){if(++i>=argc)return 1;float v=!strcmp(argv[i],"normal")?0.f:!strcmp(argv[i],"loud")?1.f:!strcmp(argv[i],"night")?2.f:-1.f;if(v<0)return 1;return dsp(0x0C,0x96,v,o);} if(i>=argc||onoff(argv[i],&b))return 1;return dsp(0x08,0x96,b?1.f:0.f,o);
     }
     if(!strcmp(c,"direct")||!strcmp(c,"spdif-direct")){if(i>=argc||onoff(argv[i],&b))return 1;uint8_t p[3]={0x23,!strcmp(c,"direct")?0x43:0x4B,b?1:0};return send_report(p,3,o);}
-    if(!strcmp(c,"output")){if(i>=argc)return 1;if(!strcmp(argv[i],"speakers")){uint8_t p[]={0x23,0x4E,0x00,0x00,0x00,0x80};return send_report(p,6,o);}if(!strcmp(argv[i],"headphones")){uint8_t p[]={0x23,0x4E,0x01,0x00,0x00,0x00};return send_report(p,6,o);}return 1;}
+    if(!strcmp(c,"sbx-master")){if(i>=argc||onoff(argv[i],&b))return 1;uint8_t p[]={0x23,0x23,0x01,b?1:0};return send_report(p,4,o);}
+    if(!strcmp(c,"output")){if(i>=argc)return 1;if(!strcmp(argv[i],"speakers")){uint8_t p[]={0x23,0x4E,0x00,0x00,0x00,0x80};return send_report(p,6,o);}if(!strcmp(argv[i],"headphones")){int rc=dsp(0x08,0x80,0.f,o);if(rc)return rc;if(o.apply)usleep(50000);uint8_t p[]={0x23,0x4E,0x01,0x00,0x00,0x00};return send_report(p,6,o);}return 1;}
 
     if(!strcmp(c,"bass-redirection")){if(i>=argc||onoff(argv[i],&b))return 1;return dsp(0x2A,0x96,b?1.f:0.f,o);}
     if(!strcmp(c,"crossover")){if(i>=argc)return 1;float v=strtof(argv[i],NULL);if(v<10||v>500){fprintf(stderr,"crossover must be 10..500 Hz\n");return 1;}return dsp(0x2C,0x96,v,o);}
@@ -121,7 +124,7 @@ int main(int argc,char **argv){
     if(!strcmp(c,"eq")){
         if(i>=argc)return 1;
         if(!strcmp(argv[i],"on")||!strcmp(argv[i],"off")){if(onoff(argv[i],&b))return 1;return dsp(0x12,0x96,b?1.f:0.f,o);}
-        if(!strcmp(argv[i],"level")){if(++i>=argc)return 1;float v=strtof(argv[i],NULL);if(v<-12||v>12)return 1;return dsp(0x14,0x96,v,o);}
+        if(!strcmp(argv[i],"level")){if(++i>=argc)return 1;float v=strtof(argv[i],NULL);if(v<-6||v>6)return 1;return dsp(0x14,0x96,v,o);}
         if(!strcmp(argv[i],"band")){
             if(i+2>=argc)return 1; const char *band=argv[++i]; float v=strtof(argv[++i],NULL); if(v<-12||v>12)return 1;
             const char *names[]={"31","62","125","250","500","1k","2k","4k","8k","16k"}; uint8_t id=0;
@@ -147,6 +150,6 @@ int main(int argc,char **argv){
         return 1;
     }
     if(!strcmp(c,"auto-standby")){if(i>=argc||onoff(argv[i],&b))return 1;uint8_t p[]={0x5A,0x39,0x03,0x00,0x0B,b?1:0};return send_report(p,6,o);}
-    if(!strcmp(c,"scout")){if(i>=argc||onoff(argv[i],&b))return 1;uint8_t p[]={0x23,0x23,0x02,b?1:0,0x03,0x00,0x00,0x04};return send_report(p,8,o);}
+    if(!strcmp(c,"scout")){if(i>=argc||onoff(argv[i],&b))return 1;uint8_t p[]={0x23,0x23,0x02,b?1:0};return send_report(p,4,o);}
     usage(); return 1;
 }

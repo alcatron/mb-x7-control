@@ -6,7 +6,7 @@ macOS APIs and does not copy or link Creative binaries or frameworks.
 
 ## Conventions
 - `CONFIRMED`: observed in isolated or repeated live captures.
-- DSP packet family commonly observed as: `20 00 16 0A D5 02 [param_hi param_lo] [namespace] [float32 BE] 4D 00`.
+- DSP writes are 14 bytes: `20 00 16 0A D5 02 08 [parameter] 20 [module] [float32 BE]`.
 - `20 96` and `20 97` are distinct namespaces/contexts and must not be conflated.
 - Float values in DSP packets are IEEE-754 big-endian float32.
 - Mixer SoundCore dB values are signed int16 little-endian.
@@ -26,20 +26,16 @@ macOS APIs and does not copy or link Creative binaries or frameworks.
 | Crystalizer amount | `08 10` | float32 BE | continuous `0.0..1.0` |
 | SBX Bass enable | `08 30` | float32 BE | `0.0` OFF, `1.0` ON |
 | SBX Bass amount | `08 32` | float32 BE | continuous `0.0..1.0` |
-| SBX Bass crossover | `08 34` | float32 BE | frequency in Hz; Creative default `80` |
+| SBX Bass crossover | `08 2E` | float32 BE | frequency in Hz; Creative default `80` |
 
-SBX Bass is gated by the X7 headphone output path. Its enable, amount, and
-crossover controls were recovered as `08 30`, `08 32`, and `08 34` in the
-`20 96` namespace.
+SBX Bass works on both speaker and headphone output paths. Its enable, amount,
+and crossover controls are `08 30`, `08 32`, and `08 2E` in module `20 96`.
 
-The SBX master button is not a standalone HID toggle. The original panel calls
-SoundCore parameter `0x7000000100000009` with a two-byte `[1, state]` payload;
-its `CEfxMasterControlClient` then disables the supported SBX effects together
-and restores their saved enable states when switched back on. MB X7 Control
-reproduces that resulting behavior with the independently verified explicit
-SBX parameters above. Two-byte reports such as `23 4C` and `23 4D` are part of
-the legacy panel's recurring hardware-status polling and are not used as the
-SBX master command.
+SBX master is a dedicated four-byte command: `23 23 01 00|01`. The X7 disables
+or restores the previously enabled effect blocks and reports the resulting
+parameters itself. SBX and Scout form a mutually exclusive three-way mode.
+Two-byte reports such as `23 4C` and `23 4D` are recurring hardware-status
+queries and are not the master command.
 
 # 2. Equalizer — namespace 20 96
 
@@ -59,7 +55,8 @@ SBX master command.
 | 16 kHz | `08 28` |
 
 - Enable: float32 BE `0.0` OFF / `1.0` ON.
-- Level/bands: signed float32 BE values; UI permits continuous movement.
+- Overall Level: signed float32 BE, −6 through +6 dB.
+- Individual bands: signed float32 BE, −12 through +12 dB.
 
 ## Factory EQ presets captured
 Order: `Level, 31, 62, 125, 250, 500, 1K, 2K, 4K, 8K, 16K` (dB)
@@ -81,29 +78,18 @@ Selecting a factory preset was observed to write the complete EQ state rather th
 
 # 3. Speakers / Bass management — namespace 20 96
 
-## Speaker configuration HID report
+## Speaker configuration
 
-`23 4E` followed by a little-endian UInt32 channel mask:
-
-| Layout | Mask |
-|---|---:|
-| 2.0 | `0x00003003` |
-| 2.1 | `0x0000B007` |
-| 3.0 | `0x00007007` |
-| 3.1 | `0x0000F00F` |
-| 4.0 | `0x00033033` |
-| 4.1 | `0x0003B03B` |
-| 5.0 | `0x00037037` |
-| 5.1 | `0x0003F03F` |
-
-The earlier `08 08 / 20 96` speaker enum capture is not used; that identifier is
-the independently verified Smart Volume enable parameter.
+Speaker layout is DSP parameter `08 08` in module `20 80`. Its float value is
+`1 + Subwoofer + 2 × Center + 4 × Rear`, giving 1 through 8 for 2.0, 2.1, 3.0,
+3.1, 4.0, 4.1, 5.0 and 5.1 respectively. The same parameter number in module
+`20 96` is Smart Volume enable and must not be conflated with this layout value.
 
 ## Output target and speaker flags
 
 - Output target: `5A 2C 05 00` + UInt32 LE (`1` Line Out, `2` Amplifier Out, `3` Both)
-- Front L/R full-range: `08 1A / 20 96` (`0.0` full-range, `1.0` normal)
-- Rear L/R full-range: `08 1C / 20 96` (`0.0` full-range, `1.0` normal)
+- Front L/R full-range: `08 34 / 20 96` (`0.0` full-range, `1.0` normal)
+- Rear L/R full-range: `08 38 / 20 96` (`0.0` full-range, `1.0` normal)
 - High Power Amplification: `23 59 00|01`
 - Headphone Surround for Line/Optical Out: `5A 39 03 00 0A 00|01`
 
@@ -115,7 +101,7 @@ the independently verified Smart Volume enable parameter.
 | Crossover Frequency | `08 2C` | float32 BE Hz; confirmed 10.0–500.0 Hz |
 | Subwoofer Gain | `08 3C` | `0.0` OFF / `1.0` ON |
 
-Changing/removing Subwoofer was observed to clear dependent settings in some transitions. The nearby `08 30` traffic was subsequently isolated as headphone-path SBX Bass enable, not speaker Bass Redirection.
+Changing/removing Subwoofer was observed to clear dependent settings in some transitions. The nearby `08 30` traffic is SBX Bass enable, not speaker Bass Redirection.
 
 # 4. Speaker calibration channel map — namespace 20 96
 
@@ -140,8 +126,9 @@ USB SoundCore parameter IDs are twice those command IDs).
 - Distance UI range is 50–500 cm in 10 cm steps. The device value is relative
   delay in seconds: `(longestDistanceCM - channelDistanceCM) * 2.91188631995807e-5`.
   Creative's panel writes all six delay values after a distance change and
-  separately tracks the longest displayed distance. Its visible default is
-  210 cm; equal 210 cm channel distances therefore send zero relative delay.
+  separately stores the calculated longest displayed distance using
+  `23 49 02 02 02 00 [UInt16 LE centimeters]`. Its visible default is 210 cm;
+  equal 210 cm channel distances therefore send zero relative delay.
 
 # 5. Speaker model and speaker preset HID family
 
@@ -187,7 +174,8 @@ it.
 
 Confirmed isolated transitions:
 - Speakers: `23 4E 00 00 00 80`
-- Headphones: `23 4E 01 00 00 00`
+- Headphones: first write layout `08 08 / 20 80 = 0.0`, wait approximately
+  50 ms, then send `23 4E 01 00 00 00`
 
 Preserve the complete captured reports; do not assume only the state byte differs.
 
@@ -197,10 +185,10 @@ The selector became active only after a headphone plug was physically detected.
 
 The X7 uses its public HID interface, not the older Creative U2 USB-device
 request. Send output report `23 12` with report ID 0. The 16-byte input reply
-starts `00 23 12`; bit 2 of byte 4 reports the front headphone jack (`00` when
-empty, `04` when inserted). The original panel receives the same state through
-CTMalcolm's HID input callback and publishes it as its second headphone jack.
-MB X7 Control performs the query independently with public IOKit APIs.
+starts `00 23 12`. In byte 4, bit 0 reports the 6.3 mm headphone socket, bit 1
+reports the microphone socket, and bit 2 reports the 3.5 mm headphone socket.
+MB X7 Control treats either headphone bit as headphone availability and performs
+the query independently with public IOKit APIs.
 
 # 8. Cinematic / Dolby Digital Dynamic Range Control — namespace 20 97
 
@@ -215,10 +203,12 @@ Parameter: `08 04` (NOTE: same parameter ID as SBX Dialog Plus but DIFFERENT nam
 # 9. Scout Mode
 
 Confirmed HID reports:
-- ON:  `23 23 02 01 03 00 00 04`
-- OFF: `23 23 02 00 03 00 00 04`
+- ON:  `23 23 02 01`
+- OFF: `23 23 02 00`
 
-The state byte is the fourth byte (`01`/`00`) in these captured reports. A separate short `23 24 ...` report was observed around Scout Mode but remains unidentified.
+The state byte is the fourth byte (`01`/`00`). Enabling Scout makes SBX master
+inactive, and enabling SBX master makes Scout inactive. A separate `23 24`
+query was observed around these changes but remains unidentified.
 
 # 10. Auto Standby / AutoSleep
 

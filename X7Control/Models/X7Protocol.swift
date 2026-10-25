@@ -51,16 +51,6 @@ enum SpeakerLayout: Double, CaseIterable, Identifiable {
     var hasRear: Bool { self == .fourZero || self == .fourOne || self == .fiveZero || self == .fiveOne }
     var hasCenter: Bool { self == .threeZero || self == .threeOne || self == .fiveZero || self == .fiveOne }
     var hasSubwoofer: Bool { self == .twoOne || self == .threeOne || self == .fourOne || self == .fiveOne }
-    var hardwareMask: UInt32 { switch self {
-    case .stereo: 0x00003003
-    case .twoOne: 0x0000B007
-    case .threeZero: 0x00007007
-    case .threeOne: 0x0000F00F
-    case .fourZero: 0x00033033
-    case .fourOne: 0x0003B03B
-    case .fiveZero: 0x00037037
-    case .fiveOne: 0x0003F03F
-    } }
 }
 enum EQBand: String, CaseIterable, Identifiable {
     case hz31="31", hz62="62", hz125="125", hz250="250", hz500="500", k1="1K", k2="2K", k4="4K", k8="8K", k16="16K"
@@ -127,18 +117,23 @@ struct PlaybackSourceState {
 struct X7Packets {
     static func beFloat(_ v: Float) -> [UInt8] { var bits=v.bitPattern.bigEndian; return withUnsafeBytes(of:&bits){Array($0)} }
     static func dsp(_ parameter: UInt8, namespace: UInt8 = 0x96, value: Float) -> [UInt8] {
-        [0x20,0x00,0x16,0x0A,0xD5,0x02,0x08,parameter,0x20,namespace] + beFloat(value) + [0x4D,0x00]
+        [0x20,0x00,0x16,0x0A,0xD5,0x02,0x08,parameter,0x20,namespace] + beFloat(value)
     }
     static func output(_ output:X7Output)->[UInt8] { output == .speakers ? [0x23,0x4E,0x00,0x00,0x00,0x80] : [0x23,0x4E,0x01,0x00,0x00,0x00] }
     static func headphoneHighGain(_ on: Bool) -> [UInt8] { [0x23,0x45,on ? 1:0] }
     static func littleEndian(_ value: UInt32) -> [UInt8] { [UInt8(value & 0xff), UInt8((value >> 8) & 0xff), UInt8((value >> 16) & 0xff), UInt8((value >> 24) & 0xff)] }
-    static func speakerLayout(_ layout: SpeakerLayout) -> [UInt8] { [0x23,0x4E] + littleEndian(layout.hardwareMask) }
+    static func speakerLayout(_ layout: SpeakerLayout) -> [UInt8] { dsp(0x08, namespace: 0x80, value: Float(layout.rawValue)) }
+    static func disableSpeakerLayoutForHeadphones() -> [UInt8] { dsp(0x08, namespace: 0x80, value: 0) }
+    static func sbxMaster(_ on: Bool) -> [UInt8] { [0x23,0x23,0x01,on ? 1:0] }
     static func speakerOutputTarget(_ target: SpeakerOutputTarget) -> [UInt8] { [0x5A,0x2C,0x05,0x00] + littleEndian(target.rawValue) }
     static func highPowerAmplification(_ on: Bool) -> [UInt8] { [0x23,0x59,on ? 1:0] }
     static func headphoneSurroundOverSpeakerOutput(_ on: Bool) -> [UInt8] { [0x5A,0x39,0x03,0x00,0x0A,on ? 1:0] }
     static func direct(_ on:Bool)->[UInt8] { [0x23,0x43,on ? 1:0] }
     static func spdifDirect(_ on:Bool)->[UInt8] { [0x23,0x4B,on ? 1:0] }
-    static func scout(_ on:Bool)->[UInt8] { [0x23,0x23,0x02,on ? 1:0,0x03,0,0,0x04] }
+    static func scout(_ on:Bool)->[UInt8] { [0x23,0x23,0x02,on ? 1:0] }
+    static func longestSpeakerDistance(_ centimeters: UInt16) -> [UInt8] {
+        [0x23,0x49,0x02,0x02,0x02,0x00,UInt8(centimeters & 0xff),UInt8(centimeters >> 8)]
+    }
     static func standby(_ on:Bool)->[UInt8] { [0x5A,0x39,0x03,0,0x0B,on ? 1:0] }
     static func speakerModel(_ model:SpeakerModel)->[UInt8] { [0x5A,0x2A,0x03,0,model.rawValue,0] }
     static func speakerVoicing(_ voicing:SpeakerVoicing)->[UInt8] { [0x5A,0x2B,0x03,0,voicing.rawValue,0] }

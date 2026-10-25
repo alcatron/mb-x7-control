@@ -51,7 +51,7 @@ is not permitted.
 - USB connection detection (Creative VID `041e`, X7 PID `323a`)
 - Live Speakers / Headphones output switching
 - SBX master, Surround, Crystalizer, Dialog Plus and Smart Volume
-- Headphone-path SBX Bass amount and crossover controls
+- SBX Bass amount and crossover controls for speaker and headphone output
 - Smart Volume Normal / Loud / Night modes
 - Speaker model selection for Other Speakers and E-MU XM7
 - E-MU XM7 Energetic / Neutral / Warm voicing
@@ -73,7 +73,7 @@ is not permitted.
 
 ### Deliberately not faked
 
-The legacy macOS panel exposes CrystalVoice disabled on this X7 configuration, so MB X7 Control does not invent support for it. SBX Bass is available only on the detected headphone path, matching the original X7 panel.
+The legacy macOS panel exposes CrystalVoice disabled on this X7 configuration, so MB X7 Control does not invent support for it.
 
 Master volume and Playback Mixer values are read directly from the connected X7. Other controls open with the last choices saved for that X7, or Creative-compatible starting values when no saved choice exists. Saved macOS playback/recording selections and saved Mixer mute choices are intentionally restored at launch or reconnect; other hardware settings are sent only when the user changes their controls. The explicit Creative Default action applies only the supported SBX, EQ and Dolby profile values and does not alter speaker layout, routing, amplification, calibration, Direct Mode, Scout Mode or standby.
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.4
+
+- Corrected the SBX Bass crossover, Front Full-Range and Rear Full-Range DSP
+  parameters, removing collisions with speaker and EQ controls.
+- Changed DSP writes to the original controller's exact 14-byte packet format.
+- Replaced the emulated SBX master sequence with the X7's dedicated master
+  command and made SBX and Scout mutually exclusive in the interface.
+- Corrected Scout Mode to its four-byte command and enabled SBX Bass for both
+  speaker and headphone output.
+- Corrected speaker-layout writes and the two-step headphone-output transition.
+- Made distance changes rewrite all six delays and store the calculated longest
+  speaker distance on the X7.
+- Corrected the overall EQ Level range to ±6 dB while retaining ±12 dB bands.
+- Added detection for both front headphone sockets.
+
 ## 1.0.3
 
 - Changed MB X7 Control into a menu-bar utility so Open at Login runs quietly

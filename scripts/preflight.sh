@@ -6,6 +6,8 @@ PROJECT_ROOT=${SCRIPT_DIR:h}
 DERIVED_DATA=$(mktemp -d /private/tmp/mbx7-preflight.XXXXXX)
 trap 'rm -rf "$DERIVED_DATA"' EXIT
 
+zsh "$PROJECT_ROOT/scripts/test-protocol.sh"
+
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 xcodebuild \
     -project "$PROJECT_ROOT/X7Control.xcodeproj" \
