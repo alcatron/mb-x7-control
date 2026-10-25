@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.4
+## 1.0.4 — 2026-10-25
 
 - Added continuous hardware reconciliation for current output routing,
   SBX/Scout mode, both headphone sockets, the front microphone socket and
@@ -20,14 +20,14 @@
 - Corrected the overall EQ Level range to ±6 dB while retaining ±12 dB bands.
 - Added detection for both front headphone sockets.
 
-## 1.0.3
+## 1.0.3 — 2026-10-10
 
 - Changed MB X7 Control into a menu-bar utility so Open at Login runs quietly
   in the background without leaving an icon in the Dock or Command-Tab.
 - Kept the complete controller available from **Show MB X7 Control** in the
   menu-bar menu, along with About, Open at Login, and Quit.
 
-## 1.0.2
+## 1.0.2 — 2026-10-02
 
 - Corrected the SBX Pro Studio master control after tracing Creative's original
   implementation: it now disables individual SBX blocks together and reliably
@@ -43,7 +43,7 @@
 - Documented the recovered SBX master behavior and corrected the earlier
   interpretation of the X7's recurring hardware-status reports.
 
-## 1.0.1
+## 1.0.1 — 2026-10-02
 
 - Expanded every speaker calibration level control to the original panel's
   full −20 to +20 dB range in 1 dB steps.
@@ -53,7 +53,7 @@
   starting display and migrated untouched prerelease 0.5 m placeholders.
 - Added the application screenshot gallery to the project README.
 
-## 1.0.0
+## 1.0.0 — 2026-10-01
 
 - Initial native Apple-silicon release for macOS 14 and later.
 - Added independent USB control for SBX Pro Studio, speaker routing and
